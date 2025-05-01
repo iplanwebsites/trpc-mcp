@@ -2,6 +2,9 @@
 
 Serve tRPC routes via Model Context Protocol (MCP).
 
+This lib is a fork of:
+https://www.npmjs.com/package/trpc-to-openapi
+
 ## Usage
 
 ### 1. Install
