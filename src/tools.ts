@@ -40,7 +40,7 @@ function tRpcRouterRecordToMcpToolsList(
 
       const inputSchema = inputs.length >= 2 ? mergeInputs(inputs) : inputs[0];
       const meta = value._def.meta as McpMeta;
-      if (!meta || !meta.mcp.enabled) {
+      if (!meta || !meta.mcp || !meta.mcp.enabled) {
         continue;
       }
 
