@@ -1,6 +1,31 @@
 {
   "name": "trpc-mcp",
+  "version": "0.0.2",
+  "description": "tRPC adapter for Model Context Protocol (MCP)",
   "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "files": [
+    "lib/**/*"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "trpc",
+    "mcp",
+    "modelcontextprotocol",
+    "ai",
+    "llm"
+  ],
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iplanwebsites/trpc-mcp.git"
+  },
   "volta": {
     "node": "22.13.1",
     "pnpm": "10.2.0"
@@ -18,5 +43,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod-to-json-schema": "^3.20.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
