@@ -1,13 +1,23 @@
 # tRPC <-> MCP
 
-Serve tRPC routes via MCP.
+Serve tRPC routes via Model Context Protocol (MCP).
 
 ## Usage
+
+### 1. Install
+
+```bash
+npm install trpc-mcp @modelcontextprotocol/sdk
+# or
+yarn add trpc-mcp @modelcontextprotocol/sdk
+# or
+pnpm add trpc-mcp @modelcontextprotocol/sdk
+```
 
 ### 2. Add to meta
 ```ts
 import { initTRPC } from '@trpc/server';
-import { type McpMeta } from 'trpc-to-openapi';
+import { type McpMeta } from 'trpc-mcp';
 
 const t = initTRPC.meta<McpMeta>().create();
 ```
@@ -16,7 +26,7 @@ const t = initTRPC.meta<McpMeta>().create();
 ```ts
 export const appRouter = t.router({
   sayHello: t.procedure
-    .meta({ openapi: { enabled: true, description: 'Greet the user' } })
+    .meta({ mcp: { enabled: true, description: 'Greet the user' } })
     .input(z.object({ name: z.string() }))
     .output(z.object({ greeting: z.string() }))
     .query(({ input }) => {
@@ -25,6 +35,9 @@ export const appRouter = t.router({
 });
 ```
 ### 4. Serve
+
+#### Using StdIO Transport (CLI applications)
+
 ```ts
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createMcpServer } from 'trpc-mcp';
@@ -37,3 +50,77 @@ const mcpServer = createMcpServer(
 const transport = new StdioServerTransport();
 await mcpServer.connect(transport);
 ```
+
+#### Using SSE Transport (Web applications)
+
+For web applications, you can use the provided SafeSSEServerTransport to handle Server-Sent Events (SSE) connections:
+
+```ts
+import { createMcpServer, SafeSSEServerTransport } from 'trpc-mcp';
+import http from 'node:http';
+import url from 'node:url';
+
+// Create MCP server with your router
+const mcpServer = createMcpServer(
+  { name: 'trpc-mcp-sse-example', version: '0.0.1' },
+  appRouter,
+);
+
+// Initialize SSE transport
+const sseTransport = new SafeSSEServerTransport();
+await mcpServer.connect(sseTransport);
+
+// Create HTTP server
+const server = http.createServer(async (req, res) => {
+  // Parse URL and query parameters
+  const parsedUrl = url.parse(req.url || "", true);
+  const sessionId = parsedUrl.query.sessionId as string;
+  
+  if (!sessionId) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Missing sessionId parameter" }));
+    return;
+  }
+
+  // Handle SSE connection request
+  if (req.method === "GET" && parsedUrl.pathname === "/sse") {
+    sseTransport.handleGetRequest(req, res, sessionId);
+    return;
+  }
+  
+  // Handle message request
+  if (req.method === "POST" && parsedUrl.pathname === "/message") {
+    // Parse request body
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    
+    req.on("end", async () => {
+      try {
+        const jsonBody = JSON.parse(body);
+        await sseTransport.handlePostMessage(req, res, sessionId, jsonBody);
+      } catch (error) {
+        console.error("Error processing message:", error);
+        if (!res.headersSent) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Invalid request body" }));
+        }
+      }
+    });
+    return;
+  }
+  
+  // Not found
+  res.writeHead(404, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "Not found" }));
+});
+
+server.listen(3000);
+```
+
+See the full example in `src/example-sse.ts`.
+
+## Error Handling
+
+The SafeSSEServerTransport includes protection against the common "Cannot set headers after they are sent to the client" error by checking if headers have already been sent before attempting to write to the response.
